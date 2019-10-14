@@ -10,42 +10,7 @@ from ._version import get_versions
 __version__ = get_versions()["version"]
 del get_versions
 
-from .client import (
-    Connection,
-    connect,
-    daily_location,
-    modal_location,
-    modal_location_from_dates,
-    location_event_counts,
-    flows,
-    meaningful_locations_aggregate,
-    meaningful_locations_between_dates_od_matrix,
-    meaningful_locations_between_label_od_matrix,
-    get_geography,
-    get_result,
-    get_result_by_query_id,
-    get_status,
-    query_is_ready,
-    run_query,
-    get_available_dates,
-    unique_subscriber_counts,
-    location_introversion,
-    total_network_objects,
-    aggregate_network_objects,
-    spatial_aggregate,
-    joined_spatial_aggregate,
-    radius_of_gyration,
-    unique_location_counts,
-    subscriber_degree,
-    topup_amount,
-    topup_balance,
-    event_count,
-    displacement,
-    pareto_interactions,
-    nocturnal_events,
-    handset,
-    random_sample,
-)
+from .client import *
 
 __all__ = [
     "Connection",
@@ -82,4 +47,5 @@ __all__ = [
     "nocturnal_events",
     "handset",
     "random_sample",
+    "histogram_aggregate",
 ]

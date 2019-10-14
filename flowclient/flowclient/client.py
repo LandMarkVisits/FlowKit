@@ -1189,6 +1189,41 @@ def spatial_aggregate(*, locations: Dict[str, Union[str, Dict[str, str]]]) -> di
     return {"query_kind": "spatial_aggregate", "locations": locations}
 
 
+def histogram_aggregate(
+    *,
+    metric: Dict[str, Union[str, Dict[str, str]]],
+    bins: Union[int, List[float]],
+    range: Optional[Tuple[float, float]] = None,
+) -> dict:
+    """
+    Return a query spec for a metric aggregated as a histogram.
+
+    Parameters
+    ----------
+    metric : dict
+        Metric to calculate and aggregate
+    bins : int, or list of floats
+       Either an integer number of bins for equally spaced bins, or a list of floats giving the lower and upper edges
+    range : tuple of floats or None, default None
+        Optionally supply inclusive lower and upper bounds to build the histogram over. By default, the
+        histogram will cover the whole range of the data.
+
+    Returns
+    -------
+    dict
+
+        Query specification for an aggregated daily or modal location
+    """
+    if isinstance(bins, list):
+        bins = dict(bin_list=bins)
+    else:
+        bins = dict(n_bins=bins)
+    spec = dict(query_kind="histogram_aggregate", metric=metric, bins=bins)
+    if range is not None:
+        spec["range"] = list(range[:2])
+    return spec
+
+
 def joined_spatial_aggregate(
     *,
     locations: Dict[str, Union[str, Dict[str, str]]],
