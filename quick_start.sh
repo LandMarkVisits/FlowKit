@@ -115,10 +115,11 @@ function dockertemp_cleanup {
 trap dockertemp_cleanup EXIT
 
 curl -s https://raw.githubusercontent.com/Flowminder/FlowKit/${GIT_REVISION}/docker-compose.yml -o "$DOCKER_WORKDIR/docker-compose.yml"
+curl -s https://raw.githubusercontent.com/Flowminder/FlowKit/${GIT_REVISION}/docker-compose-random-ports.yml -o "$DOCKER_WORKDIR/docker-compose-random-ports.yml"
 curl -s https://raw.githubusercontent.com/Flowminder/FlowKit/${GIT_REVISION}/docker-compose-testdata.yml -o "$DOCKER_WORKDIR/docker-compose-testdata.yml"
 curl -s https://raw.githubusercontent.com/Flowminder/FlowKit/${GIT_REVISION}/docker-compose-syntheticdata.yml -o "$DOCKER_WORKDIR/docker-compose-syntheticdata.yml"
 
-DOCKER_COMPOSE="docker-compose -p flowkit_qs -f $DOCKER_WORKDIR/docker-compose.yml -f $DOCKER_WORKDIR/$EXTRA_COMPOSE"
+DOCKER_COMPOSE="docker-compose -p flowkit_qs -f $DOCKER_WORKDIR/docker-compose.yml -f $DOCKER_WORKDIR/docker-compose-random-ports.yml -f $DOCKER_WORKDIR/$EXTRA_COMPOSE"
 
 if [ $# -gt 0 ] && [ "$1" = "stop" ]
 then
@@ -138,24 +139,31 @@ else
     echo "Waiting for containers to be ready.."
     docker exec flowdb bash -c 'i=0; until { [ $i -ge 24 ] && exit_status=1; } || { (pg_isready -h 127.0.0.1 -p 5432) && exit_status=0; }; do let i=i+1; echo Waiting 10s; sleep 10; done; exit $exit_status' || (>&2 echo "FlowDB failed to start :( Please open an issue at https://github.com/Flowminder/FlowKit/issues/new?template=bug_report.md&labels=FlowDB,bug including the output of running 'docker logs flowdb'" && exit 1)
     echo "FlowDB ready."
-    (i=0; until { [ $i -ge 24 ] && exit_status=1; } || { ((ss -tuna || netstat -an) | grep -q $FLOWMACHINE_PORT) && exit_status=0; } ; do let i=i+1; echo Waiting 10s; sleep 10; done; exit $exit_status) || (>&2 echo "FlowMachine failed to start :( Please open an issue at https://github.com/Flowminder/FlowKit/issues/new?template=bug_report.md&labels=FlowMachine,bug including the output of running 'docker logs flowmachine'" && exit 1)
+
+    IFS=':' # Port delimiter
+    FLOWMACHINE_ADR=($(docker port flowmachine 5555))
+    FLOWDB_ADR=($(docker port flowdb 5432))
+    IFS=' '
+
+    (i=0; until { [ $i -ge 24 ] && exit_status=1; } || { ((ss -tuna || netstat -an) | grep -q "${FLOWMACHINE_ADR[1]}") && exit_status=0; } ; do let i=i+1; echo Waiting 10s; sleep 10; done; exit $exit_status) || (>&2 echo "FlowMachine failed to start :( Please open an issue at https://github.com/Flowminder/FlowKit/issues/new?template=bug_report.md&labels=FlowMachine,bug including the output of running 'docker logs flowmachine'" && exit 1)
     echo "FlowMachine ready"
-    (i=0; until { [ $i -ge 24 ] && exit_status=1; } || { (curl -s http://localhost:$FLOWAPI_PORT/api/0/spec/openapi.json > /dev/null) && exit_status=0; } ; do let i=i+1; echo Waiting 10s; sleep 10; done; exit $exit_status) || (>&2 echo "FlowAPI failed to start :( Please open an issue at https://github.com/Flowminder/FlowKit/issues/new?template=bug_report.md&labels=FlowAPI,bug including the output of running 'docker logs flowapi'" && exit 1)
+    (i=0; until { [ $i -ge 24 ] && exit_status=1; } || { (curl -s http://$(docker port flowapi 9090)/api/0/spec/openapi.json > /dev/null) && exit_status=0; } ; do let i=i+1; echo Waiting 10s; sleep 10; done; exit $exit_status) || (>&2 echo "FlowAPI failed to start :( Please open an issue at https://github.com/Flowminder/FlowKit/issues/new?template=bug_report.md&labels=FlowAPI,bug including the output of running 'docker logs flowapi'" && exit 1)
     echo "FlowAPI ready."
-    (i=0; until { [ $i -ge 24 ] && exit_status=1; } || { (curl -s http://localhost:$FLOWAUTH_PORT > /dev/null) && exit_status=0; } ; do let i=i+1; echo Waiting 10s; sleep 10; done; exit $exit_status) || (>&2 echo "FlowAuth failed to start :( Please open an issue at https://github.com/Flowminder/FlowKit/issues/new?template=bug_report.md&labels=FlowAuth,bug including the output of running 'docker logs flowauth'" && exit 1)
+    (i=0; until { [ $i -ge 24 ] && exit_status=1; } || { (curl -s http://$(docker port flowauth 80) > /dev/null) && exit_status=0; } ; do let i=i+1; echo Waiting 10s; sleep 10; done; exit $exit_status) || (>&2 echo "FlowAuth failed to start :( Please open an issue at https://github.com/Flowminder/FlowKit/issues/new?template=bug_report.md&labels=FlowAuth,bug including the output of running 'docker logs flowauth'" && exit 1)
     echo "FlowAuth ready."
     if [[ "$WORKED_EXAMPLES" = "worked_examples" ]]
     then
-        (i=0; until { [ $i -ge 24 ] && exit_status=1; } || { (curl -s http://localhost:$WORKED_EXAMPLES_PORT > /dev/null) && exit_status=0; } ; do let i=i+1; echo Waiting 10s; sleep 10; done; exit $exit_status) || (>&2 echo "Worked examples failed to start :( Please open an issue at https://github.com/Flowminder/FlowKit/issues/new?template=bug_report.md&labels=docs,bug including the output of running 'docker logs worked_examples'" && exit 1)
+        (i=0; until { [ $i -ge 24 ] && exit_status=1; } || { (curl -s http://$(docker port worked_examples 8888) > /dev/null) && exit_status=0; } ; do let i=i+1; echo Waiting 10s; sleep 10; done; exit $exit_status) || (>&2 echo "Worked examples failed to start :( Please open an issue at https://github.com/Flowminder/FlowKit/issues/new?template=bug_report.md&labels=docs,bug including the output of running 'docker logs worked_examples'" && exit 1)
         echo "Worked examples ready."
     fi
+
     echo "All containers ready!"
-    echo "Access FlowDB using 'PGHOST=$FLOWDB_HOST PGPORT=$FLOWDB_PORT PGDATABASE=flowdb PGUSER=$FLOWMACHINE_FLOWDB_USER PGPASSWORD=$FLOWMACHINE_FLOWDB_PASSWORD psql'"
-    echo "Access FlowAPI using FlowClient at http://localhost:$FLOWAPI_PORT"
-    echo "View the FlowAPI spec at http://localhost:$FLOWAPI_PORT/api/0/spec/redoc"
-    echo "Generate FlowAPI access tokens using FlowAuth with user TEST_USER and password DUMMY_PASSWORD at http://localhost:$FLOWAUTH_PORT"
+    echo "Access FlowDB using 'PGHOST=${FLOWDB_ADR[0]} PGPORT=${FLOWDB_ADR[1]} PGDATABASE=flowdb PGUSER=$FLOWMACHINE_FLOWDB_USER PGPASSWORD=$FLOWMACHINE_FLOWDB_PASSWORD psql'"
+    echo "Access FlowAPI using FlowClient at http://$(docker port flowapi 9090)"
+    echo "View the FlowAPI spec at http://$(docker port flowapi 9090)/api/0/spec/redoc"
+    echo "Generate FlowAPI access tokens using FlowAuth with user TEST_USER and password DUMMY_PASSWORD at http://$(docker port flowauth 80)"
     if [[ "$WORKED_EXAMPLES" = "worked_examples" ]]
     then
-        echo "Try out the interactive examples at http://localhost:$WORKED_EXAMPLES_PORT"
+        echo "Try out the interactive examples at http://$(docker port worked_examples 8888)"
     fi
 fi

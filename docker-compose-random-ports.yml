@@ -1,0 +1,46 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# DOCKER COMPOSE FOR FLOWKIT - overrides ports to be ephemeral
+#
+
+version: '3.5'
+
+
+
+services:
+
+  flowdb:
+    ports:
+      - 5432
+
+  flowmachine:
+    ports:
+      - 5555
+
+
+  worked_examples:
+    ports:
+      - 8888
+
+  flowapi:
+    ports:
+      - 9090
+
+  flowauth:
+    ports:
+      - 80
+
+
+  flowmachine_query_locker:
+    ports:
+      - 6379
+
+  flowetl:
+    ports:
+      - 8080
+
+  flowetl_db:
+    ports:
+      - 5432
